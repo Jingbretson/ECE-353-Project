@@ -1,0 +1,7 @@
+*.log
+tmp/
+
+Project.*
+RTE/
+lst/
+obj/
