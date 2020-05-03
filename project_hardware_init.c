@@ -33,8 +33,15 @@ void initializeBoard(void)
 	
 	
 	
+	lp_io_init();
+	//ft6x06_init();
+	
+	
 	gp_timer_config_32(TIMER1_BASE,TIMER_TAMR_TAMR_PERIOD, 50000000, false);
-  gp_timer_config_32(TIMER2_BASE,TIMER_TAMR_TAMR_PERIOD, 500000, false);
+  gp_timer_config_32(TIMER4_BASE,TIMER_TAMR_TAMR_PERIOD, 500000, false);
+	
+	
+	
 	
 	
 	

@@ -24,24 +24,60 @@
 #include "project_interrupts.h"
 
 
+static volatile uint16_t PS2_X_DATA = 0;
+static volatile uint16_t PS2_Y_DATA = 0;
+static volatile PS2_DIR_t PS2_DIR = PS2_DIR_CENTER;
+
+
+
+
+PS2_DIR_t ps2_get_direction(void)
+{
+	
+		if (PS2_X_DATA > 2.4){
+        return PS2_DIR_LEFT;
+		}
+    if (PS2_X_DATA < 0.85){
+        return PS2_DIR_RIGHT;
+		}
+    if (PS2_Y_DATA > 2.4){
+        return PS2_DIR_UP;
+		}
+    if (PS2_Y_DATA < 0.85){
+        return PS2_DIR_DOWN;
+		}
+    return PS2_DIR_CENTER;
+	
+	
+  
+}
+
 
 
 
 void TIMER1A_Handler(void)
 {	
-
+	
+	if (lp_io_read_pin(RED_M)){
+		lp_io_set_pin(RED_M);
+	} else {
+		lp_io_clear_pin(RED_M);
+	}
 	
     // Clear the interrupt
 	TIMER1->ICR |= TIMER_ICR_TATOCINT;
 }
 
-void TIMER2A_Handler(void)
+void TIMER4A_Handler(void)
 {	
 	
-
-	
+	// sets ps2 data
+		PS2_X_DATA = ADC0->SSFIFO2;
+		PS2_Y_DATA = ADC0->SSFIFO2;
+    PS2_DIR = ps2_get_direction();
+ 
     // Clear the interrupt
-	TIMER2->ICR |= TIMER_ICR_TATOCINT;
+	TIMER4->ICR |= TIMER_ICR_TATOCINT;
 }
 
 
