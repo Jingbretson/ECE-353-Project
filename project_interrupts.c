@@ -23,6 +23,7 @@
 #include "main.h"
 #include "project_interrupts.h"
 
+static volatile bool time_to_debounce = false;
 
 static volatile uint16_t PS2_X_DATA = 0;
 static volatile uint16_t PS2_Y_DATA = 0;
@@ -81,6 +82,11 @@ void TIMER4A_Handler(void)
 }
 
 
+void GPIOF_Handler(void)
+{
+	// clear interrupt
+	GPIOF->ICR |= GPIO_ICR_GPIO_M;
+}
 
 
 

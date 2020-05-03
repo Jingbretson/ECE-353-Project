@@ -23,10 +23,31 @@
 #include "main.h"
 #include "project_hardware_init.h"
 
+void configure_gpiof_irq(void)
+{
+	gpio_enable_port(IO_EXPANDER_GPIO_BASE);
+  
+	gpio_config_digital_enable(IO_EXPANDER_IRQ_GPIO_BASE, IO_EXPANDER_IRQ_PIN_NUM);
+
+	gpio_config_enable_input(IO_EXPANDER_IRQ_GPIO_BASE, IO_EXPANDER_IRQ_PIN_NUM);
+
+  // is this pullup necessary?
+	gpio_config_enable_pullup(IO_EXPANDER_IRQ_GPIO_BASE, IO_EXPANDER_IRQ_PIN_NUM);
+	
+	gpio_config_falling_edge_irq(IO_EXPANDER_IRQ_GPIO_BASE, IO_EXPANDER_IRQ_PIN_NUM);
+
+  // Set the Priority
+  NVIC_SetPriority(GPIOF_IRQn, 1);
+
+  // Enable the Interrupt in the NVIC
+  NVIC_EnableIRQ(GPIOF_IRQn);
+}
+
 void initializeBoard(void)
 {
   DisableInterrupts();
   init_serial_debug(true, true);
+  EnableInterrupts();
 	
 	io_expander_init();
 	// to use IO expander features, we need to configure it
@@ -43,8 +64,15 @@ void initializeBoard(void)
 	
 	
 	
-	
-	
-	
-  EnableInterrupts();
+	// turn on internal pull up for push  buttons (pins 3-0 of 7)
+	io_expander_write_reg(IO_EXPANDER_I2C_BASE, MCP23017_GPPUB_R, 0x0F);
+	// set buttons to inputs
+	io_expander_write_reg(IO_EXPANDER_I2C_BASE, MCP23017_IODIRB_R, 0x0F);
+	// set button pins to interrupt on change
+	io_expander_write_reg(IO_EXPANDER_I2C_BASE, MCP23017_GPINTENB_R, 0x0F);
+	// configure interrupts to occur via change from previous value, not change from DEFVAL
+	io_expander_write_reg(IO_EXPANDER_I2C_BASE, MCP23017_INTCONB_R, 0x00);
+	// interrupts from part B are received on tiva's GPIOF bit 0
+	configure_gpiof_irq();
+	gpio_config_falling_edge_irq(IO_EXPANDER_IRQ_GPIO_BASE, IO_EXPANDER_IRQ_PIN_NUM);
 }
