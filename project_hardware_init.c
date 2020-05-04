@@ -23,9 +23,35 @@
 #include "main.h"
 #include "project_hardware_init.h"
 
+void configure_io_expander(void)
+{
+	// set port A pins (LED's) to outputs
+	io_expander_write_reg(IO_EXPANDER_I2C_BASE, MCP23017_IODIRA_R, 0x00);
+	
+	
+	// set port B pins (buttons and switches) to inputs
+	io_expander_write_reg(IO_EXPANDER_I2C_BASE, MCP23017_IODIRB_R, 0xFF);
+	
+	// turn on internal pull up for push buttons (pins 3-0)
+	io_expander_write_reg(IO_EXPANDER_I2C_BASE, MCP23017_GPPUB_R, 0x0F);
+	
+	
+	// make sure INTB is open drain ~active low~
+	io_expander_write_reg(IO_EXPANDER_I2C_BASE, MCP23017_IOCONB_R, (1 << 2));
+	
+	// configure interrupts to occur via change from previous value, not change from DEFVAL
+  io_expander_write_reg(IO_EXPANDER_I2C_BASE, MCP23017_INTCONB_R, 0x00);
+	
+	// set button pins to interrupt on change
+	io_expander_write_reg(IO_EXPANDER_I2C_BASE, MCP23017_GPINTENB_R, 0x0F);
+	
+	// read to knock down initial high?
+	io_expander_read_reg(IO_EXPANDER_I2C_BASE, MCP23017_GPIOB_R, NULL);
+}
+
 void configure_gpiof_irq(void)
 {
-	gpio_enable_port(IO_EXPANDER_GPIO_BASE);
+	gpio_enable_port(IO_EXPANDER_IRQ_GPIO_BASE);
   
 	gpio_config_digital_enable(IO_EXPANDER_IRQ_GPIO_BASE, IO_EXPANDER_IRQ_PIN_NUM);
 
@@ -33,46 +59,56 @@ void configure_gpiof_irq(void)
 
   // is this pullup necessary?
 	gpio_config_enable_pullup(IO_EXPANDER_IRQ_GPIO_BASE, IO_EXPANDER_IRQ_PIN_NUM);
+	//gpio_config_enable_pulldown(IO_EXPANDER_IRQ_GPIO_BASE, IO_EXPANDER_IRQ_PIN_NUM);
 	
+	// interrupts from part B are received on tiva's GPIOF bit 0
 	gpio_config_falling_edge_irq(IO_EXPANDER_IRQ_GPIO_BASE, IO_EXPANDER_IRQ_PIN_NUM);
 
-  // Set the Priority
-  NVIC_SetPriority(GPIOF_IRQn, 1);
+	// Set the Priority
+	NVIC_SetPriority(GPIOF_IRQn, 1);
 
-  // Enable the Interrupt in the NVIC
-  NVIC_EnableIRQ(GPIOF_IRQn);
+	// Enable the Interrupt in the NVIC
+	NVIC_EnableIRQ(GPIOF_IRQn);
 }
 
 void initializeBoard(void)
 {
   DisableInterrupts();
+	
   init_serial_debug(true, true);
-  EnableInterrupts();
 	
+	lcd_config_gpio();
+  lcd_config_screen();
+  lcd_clear_screen(LCD_COLOR_BLACK);
+	
+	
+	eeprom_init();
 	io_expander_init();
-	// to use IO expander features, we need to configure it
+	ps2_initialize();
+  ft6x06_init();
 	
+	// 50000000 ticks is 1s for clock of 50MHz
+	gp_timer_config_32(TIMER1_BASE,TIMER_TAMR_TAMR_PERIOD, 50000000, false, true);
+	// 500000 ticks is 10ms for 50MHz clock
+	// 16 bit timer is too small for 500000 so use prescalar
+	// prescalar of 7 -> every 8th tick -> 62500 ticks < 2^16 == 65536
+	// prescalar assigned within function
+  gp_timer_config_16(TIMER4_BASE,TIMER_TAMR_TAMR_PERIOD, 62500, false, true);
+	// fall back to the regular 32 bit timer if not working
+	// gp_timer_config_32(TIMER4_BASE,TIMER_TAMR_TAMR_PERIOD, 50000, false, true);
 	
+
+	// set up IO expander GPIO pins via I2C
+	configure_io_expander();
+	#if 0
+	// set up interrupts from IO expander on GPIOF
+	configure_gpiof_irq();
+	// now that GPIOF is up, turn on the blinking light
+	gpio_config_digital_enable(GPIOF_BASE, GREEN_M);
+	gpio_config_enable_output(GPIOF_BASE, GREEN_M);
+	#endif
 	
 	lp_io_init();
-	//ft6x06_init();
 	
-	
-	gp_timer_config_32(TIMER1_BASE,TIMER_TAMR_TAMR_PERIOD, 50000000, false);
-  gp_timer_config_32(TIMER4_BASE,TIMER_TAMR_TAMR_PERIOD, 500000, false);
-	
-	
-	
-	
-	// turn on internal pull up for push  buttons (pins 3-0 of 7)
-	io_expander_write_reg(IO_EXPANDER_I2C_BASE, MCP23017_GPPUB_R, 0x0F);
-	// set buttons to inputs
-	io_expander_write_reg(IO_EXPANDER_I2C_BASE, MCP23017_IODIRB_R, 0x0F);
-	// set button pins to interrupt on change
-	io_expander_write_reg(IO_EXPANDER_I2C_BASE, MCP23017_GPINTENB_R, 0x0F);
-	// configure interrupts to occur via change from previous value, not change from DEFVAL
-	io_expander_write_reg(IO_EXPANDER_I2C_BASE, MCP23017_INTCONB_R, 0x00);
-	// interrupts from part B are received on tiva's GPIOF bit 0
-	configure_gpiof_irq();
-	gpio_config_falling_edge_irq(IO_EXPANDER_IRQ_GPIO_BASE, IO_EXPANDER_IRQ_PIN_NUM);
+	EnableInterrupts();
 }

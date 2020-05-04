@@ -23,34 +23,24 @@
 #include "main.h"
 #include "project_interrupts.h"
 
-static volatile bool time_to_debounce = false;
-
 static volatile uint16_t PS2_X_DATA = 0;
 static volatile uint16_t PS2_Y_DATA = 0;
-static volatile PS2_DIR_t PS2_DIR = PS2_DIR_CENTER;
+
 
 
 
 
 PS2_DIR_t ps2_get_direction(void)
 {
-	
-		if (PS2_X_DATA > 2.4){
-        return PS2_DIR_LEFT;
-		}
-    if (PS2_X_DATA < 0.85){
-        return PS2_DIR_RIGHT;
-		}
-    if (PS2_Y_DATA > 2.4){
-        return PS2_DIR_UP;
-		}
-    if (PS2_Y_DATA < 0.85){
-        return PS2_DIR_DOWN;
-		}
-    return PS2_DIR_CENTER;
-	
-	
-  
+  if (PS2_X_DATA > PS2_ADC_HIGH_THRESHOLD)
+		return PS2_DIR_LEFT;
+	if (PS2_X_DATA < PS2_ADC_LOW_THRESHOLD)
+		return PS2_DIR_RIGHT;
+	if (PS2_Y_DATA > PS2_ADC_HIGH_THRESHOLD)
+		return PS2_DIR_UP;
+	if (PS2_Y_DATA < PS2_ADC_LOW_THRESHOLD)
+		return PS2_DIR_DOWN;
+	return PS2_DIR_CENTER;
 }
 
 
@@ -58,32 +48,41 @@ PS2_DIR_t ps2_get_direction(void)
 
 void TIMER1A_Handler(void)
 {	
-	
-	if (lp_io_read_pin(RED_M)){
-		lp_io_set_pin(RED_M);
+	// WORKS
+	if (lp_io_read_pin(GREEN_BIT)){
+		lp_io_clear_pin(GREEN_BIT);
 	} else {
-		lp_io_clear_pin(RED_M);
+		lp_io_set_pin(GREEN_BIT);
 	}
 	
-    // Clear the interrupt
+  // Clear the interrupt
 	TIMER1->ICR |= TIMER_ICR_TATOCINT;
 }
 
 void TIMER4A_Handler(void)
 {	
-	
-	// sets ps2 data
-		PS2_X_DATA = ADC0->SSFIFO2;
-		PS2_Y_DATA = ADC0->SSFIFO2;
-    PS2_DIR = ps2_get_direction();
+	ADC0->PSSI |= ADC_PSSI_SS2;
  
     // Clear the interrupt
 	TIMER4->ICR |= TIMER_ICR_TATOCINT;
 }
 
+//*****************************************************************************
+// ADC0 SS2 ISR
+//*****************************************************************************
+void ADC0SS2_Handler(void)
+{
+	PS2_X_DATA = ADC0->SSFIFO2;
+	PS2_Y_DATA = ADC0->SSFIFO2;
+	PS2_DIR = ps2_get_direction();
+  // Clear the interrupt
+  ADC0->ISC |= ADC_ISC_IN2;
+}
 
+// NOT WORKING?
 void GPIOF_Handler(void)
 {
+	button_pressed = true;
 	// clear interrupt
 	GPIOF->ICR |= GPIO_ICR_GPIO_M;
 }

@@ -22,9 +22,23 @@
 #ifndef __MAIN_H__
 #define __MAIN_H__
 
+
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
+
+typedef enum{
+  PS2_DIR_UP,
+  PS2_DIR_DOWN,
+  PS2_DIR_LEFT,
+  PS2_DIR_RIGHT,
+  PS2_DIR_CENTER,
+  PS2_DIR_INIT,
+} PS2_DIR_t;
+
+
+extern volatile PS2_DIR_t PS2_DIR;
+extern volatile uint8_t button_pressed;
 
 #include "TM4C123.h"
 #include "gpio_port.h"
@@ -36,7 +50,34 @@
 
 #include "serial_debug.h"
 #include "io_expander.h"
+#include "eeprom.h"
+#include "ft6x06.h"
 
 #include "project_interrupts.h"
 #include "project_hardware_init.h"
+
+#define SCORE_ADDR 256
+typedef enum {
+	BD_UP,
+	BD_DOWN,
+	BD_LEFT,
+	BD_RIGHT,
+	BD_CENTER
+} BD_t;
+
+typedef struct {
+	BD_t dir;
+	uint16_t x;
+	uint16_t y;
+} bullet_t;
+
+typedef enum 
+{
+  DEBOUNCE_ONE,
+  DEBOUNCE_1ST_ZERO,
+  DEBOUNCE_2ND_ZERO,
+  DEBOUNCE_PRESSED
+} DEBOUNCE_STATES;
+
+
 #endif
